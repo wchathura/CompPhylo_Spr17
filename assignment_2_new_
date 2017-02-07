@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb  4 05:08:13 2017
+
+@author: cw
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import random
+import timeit
+
+from functools import reduce
+
+
+# this defines a recursive function to get the factorial of a given number
+def factorial(n,x=1):
+    if (n == x):
+        return x
+    else:
+        return n * factorial(n-1,x=1)
+    
+# this function can be used to calculate binomial cofficient efficiently
+
+def newVBinomial(nn,kk): # nn= number of trials kk= number of sucesses
+   list_mul=[]
+   n=nn
+   x=n-(n-kk+1)
+   #print(x)
+   for i in range(x+1):
+      #print(i)
+      list_mul.append(n)
+      n=n-1
+   cc=reduce(lambda x, y: x*y, list_mul) 
+   return cc/factorial(kk)
+
+
+   
+def binomial(n,k):
+    if n>k:
+      return(factorial(n)/(factorial(n-k)*factorial(k)))
+    
+#print(binomial(4,2)) 
+
+
+#define a Bern prob function using factorial
+def pmfBern(n,k,p):
+    biC=binomial(n,k)
+    prob_suces=pow(p,k)
+    prob_fail=pow(1-p,n-k)
+    fiprob=biC*prob_suces*prob_fail
+    return fiprob
+
+#define a Bern prob using efficient method to calculate binomial
+def pmfBern2(n,k,p):
+    binomial=newVBinomial(n,k)
+    prob_suces=pow(p,k)
+    prob_fail=pow(1-p,n-k)
+    fibrob=binomial*prob_fail*prob_suces
+    return fibrob
+y=pmfBern2(5,2,0.7) 
+
+# calculate the time taken for prob calculation using both methods
+start = timeit.default_timer()
+x=pmfBern(5,2,0.7)
+stop = timeit.default_timer()
+#print("time to calclate Bern using function 1")
+#print(stop-start)
+start1 = timeit.default_timer()
+x=pmfBern2(5,2,0.7)
+stop1 = timeit.default_timer()
+#print("time to calclate Bern using function 2")
+#print(stop1-start1)
+
+#print(x)
+#print(y)
+## event list and probability list is created
+events=["a","b","c","d","e","f"]
+prob=[0.1,0.1,0.2,0.2,0.2,0.2]
+
+# this function takes event list and prob list and sample event in a random fashion
+def sample(e,pr):
+    addedProb=[]
+    prob=pr
+    events=e
+    for id_,i in enumerate(prob):
+    
+        if id_==0:
+            addedProb.append(i)
+        else:
+            nex=i+addedProb[id_-1]
+            #print(nex)
+            addedProb.append(nex)
+    a=[0 ] 
+    zaddedProb=a+addedProb   
+   # print(zaddedProb)
+    x=random.uniform(0, 1)
+    for zidx,zi in enumerate(zaddedProb):
+        if zi<x<zaddedProb[zidx+1]:
+        
+            return (events[zidx])
+        else:
+         continue
+eeList=["a","b"]
+ppList=[0.5,0.5]
+#call the random sampling function with event list and prob list
+s=sample(eeList,ppList)
+#print(s)       
+#### this is t
+#second part of the assingmnet
+# define a function to sample from a event and probability distribution
+
+def randomSamp(x,eList,pList):
+    sampledEvents=[]
+    #sampledProb=[]
+    for i in range(x): ## take number of samples specified by user
+        s=sample(eList,pList)
+        sampledEvents.append(s)
+    return sampledEvents
+        #print(len(sampledEvents))
+        #print(len(sampledProb))
+    
+ccc=randomSamp(400,eeList,ppList)
+#print(ccc.count("a"))
+#print(ccc.count("b"))
+
+trials_100=[]
+for i in range(100):
+    trial=randomSamp(400,eeList,ppList)
+    a_count=trial.count("a")
+    b_count=trial.count("b")
+    trials_100.append(a_count)
+    
+#propotions of a
+a_propotion=[]
+for tr in trials_100:
+   # print(tr)
+    pro=float(tr)/(400-tr)
+   # print(pro)
+    a_propotion.append(round(pro,2))
+
+#print(a_propotion)
+
+#get the occurance 
+
+uniqeEvents=set(a_propotion)
+for ue in uniqeEvents:
+    un_count=a_propotion.count(ue)
+    #print(un_count)
+
+# I could not figure out how to do the prob calculation  
+
+def likeHood(n,k,p): # function to calculate ML
+   
+    diff=0.1  # defne a value for searching 
+    pCur=p # assing user provided prob to variable
+    
+    pUP=0 # probability up
+    pDown=0 #probality down
+    while(True): # declare a while loop
+    
+        li=pmfBern2(n,k,pCur) # use function wrote above to get the likelihood
+        pUP=pCur+diff
+        pDown=pCur-diff
+       # print(pCur,end='')
+        #print("    ",end='')
+        #print(pDown, end='')
+        #print("    ",end='')
+        #print(pUP)
+        #print(li)
+        li_up=pmfBern2(n,k,pUP) #calculate likelihood for new prob
+        li_down=pmfBern2(n,k,pDown) # calculate likelihood for new prob
+       
+        #print(count)
+        if li<li_up: # check the likelihood is higher than courrent
+            pCur=pUP
+            #print("UP")
+            continue   #exit form current loop 
+        if li<li_down:#/home/cw/Downloads/What is Life WR example(1).docx
+            pCur=pDown
+            #print("down")
+            continue# exit from current loop 
+        if (li_up<li or li_down<li and diff>0.00001):
+            diff=diff/2
+            #print("inner")
+            continue
+        if diff<0.001: # if differenec is less than 0.001 exit from the main loop 
+            
+            break
+    #print(li_down)
+    #print(li_up)
+    #print(li)
+    #print(count)
+    return li   
+max_li=likeHood(400,34,0.6)
+#print(max_li)
+
+
+p=0.4 # true probability value
+p_list=[0.4,0.7]  #define a probability list
+e_list=["S","F"]   #define a event list for a binomial destribution
+sucess_list=[]    # declare a empty list to hold number of sucesses form a trial
+for jj in range(100):    # pefrom 100 sampling events, each event consist of 100 trials(draws)
+    tr_res=randomSamp(100,e_list,p_list)
+    cc=tr_res.count("S") # insert the number of sucesses into a list
+    sucess_list.append(cc)
+    
+print(sucess_list)
+ml_list=[] #declare a list hold mL values
+like_ratio_list=[] # declare a list to hold likelihood ration values
+for ss in sucess_list:
+    mL_value=likeHood(100,ss,0.3) # for each event calculate the ML value using the function wrote aboe
+    ml_list.append(mL_value)
+    like_ratio_list.append(mL_value/0.3) # devide ML value by true prob to get the likelihood ratio
+    
+#print(ml_list)
+print(like_ratio_list)    
+    
+    
+    
