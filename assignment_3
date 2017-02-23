@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Feb 19 10:13:54 2017
+
+@author: cw
+"""
+
+from scipy.stats import binom, uniform,norm
+import numpy
+# Importing pseudo-random number generators for uniform and Gaussian distributions
+from random import random, gauss
+import matplotlib.pyplot as plt
+
+def prior(prob):
+    return uniform.pdf(prob)
+
+x=prior(9)
+#print(x)
+
+def like(successes,trials,prob,testingPrior=False):
+    if testingPrior:  # If True, this will always return 1. This can be useful if one wants
+        return 1      # to test the machinery by estimating a known distribution (the prior).
+    if prob < 0:
+        return 0
+    elif prob > 1:
+        return 0
+    else:
+        return binom.pmf(successes,trials,prob)
+#    if probDes=="normal":
+#        return norm.pdf(successes,trials,prob)
+x=like(5.6,7,0.6)
+print(x)
+        
+def posterior(successes,trials,prob):
+    posterior = prior(prob) * like(successes,trials,prob,x)
+    return posterior
+    
+# given a current value window size, lower ad upper bound of the parameter this function will return a randomly 
+# generated param value   
+def uniProposal(currValue,window,lowerBound,upperBound):
+    """ this function takes inputs current value, window size and lower and upper bounds of the parm value and returns
+    a randomly generated parameter value"""
+    x_star=numpy.random.uniform(currValue-(window/2),currValue+(window/2))
+    #print(x_star)
+    if x_star<lowerBound:
+        x_star=lowerBound+(lowerBound-x_star)
+        return x_star
+    if x_star>upperBound:
+        x_star_1=upperBound+(upperBound-x_star)
+        return x_star_1
+    else:
+        return x_star
+        
+    
+y=uniProposal(9.99,0.5,1,10)
+#print(y)
+# This function evaluates the two posterior values.ratio of two new and old is calculated 
+#and if it is greater than one new pos is accepted, if it is less than one it is accepted a probabillity that is 
+# corelated with new and old ratio
+def evaluation(newPos,oldPos):
+     proposalRatio=min(1,newPos/oldPos)
+    # print(proposalRatio)
+     randNum=numpy.random.uniform(0,1)
+     #print(randNum)
+     if proposalRatio>randNum:
+         return "accept"
+     else:
+         return "reject"
+     
+
+c=evaluation(3,10)
+#print(c)
+# this fnction take numGen= number of genration of makove chain, starting parameter to estimate
+# and number of sucessess, and trials in a binomial trial and run a markov chain
+#in each iteration it propose a new parameter value, evalutae its acceptance and append it into a list
+def markovChain(numGen,parm,success,trials):
+    i=0
+    print(parm)
+    parm_list=[]
+    pos_list=[]
+    x=[prior(parm)]
+    prior_list=x*(numGen+1)
+   
+    parm_list.append(parm)
+    pos_list.append(1)
+    prior_list.append(1)
+    while(i<numGen):
+     pos=posterior(success,trials,parm)
+     #print(pos)
+     proposedParm=uniProposal(parm,0.01,0,1)
+    # print(proposedParm)
+     new_pos=posterior(success,trials,proposedParm)
+    # print(new_pos)
+     st=(evaluation(new_pos,pos))
+     if st=="accept":
+         parm=proposedParm
+     else:
+         parm=parm
+     i+=1
+     #print(st)
+     #print(parm)
+     #prior_list.append()
+     parm_list.append(parm)
+     pos_list.append(new_pos)
+    return parm_list,pos_list,prior_list
+     
+     
+    
+parameter1,pos1,prior1=markovChain(100000,0.01,4,10)
+
+xx=[x for x in range(1001)]
+#S = [x**2 for x in range(10)]
+print(len(parameter1))
+print(len(pos1))
+
+#tracer plot for parametr
+plt.plot(parameter1)
+plt.show()
+plt.clf()
+#tracer plot for pos
+plt.plot(pos1)
+plt.show()
+plt.clf()
+
+#tracer plot for prior
+plt.plot(prior1)
+plt.show()
+plt.clf()
+
+
+#plt.plot(b,c)
+#plt.plot(c)
+
+#plt.ylabel('some numbers')
+#plt.show()
+
+    
+    
+    
+     
+    
