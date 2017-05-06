@@ -1,0 +1,178 @@
+Phylogenetic analysis was carried to study the relationships between SOS genes form different Brassicaceae speies.
+
+calculated marginal likelihood for three models to select most suitable model
+
+1) GTR with invariable site and varibale sites with four discreet gama catories
+2) GTR with varibale sites with four discreet gama catories
+3) GTR with invariable sites
+
+Depending on the marginal likelihood, model 2 was selected.
+
+MCMC simulation was performed on the data set 
+
+four independet runs were carried out
+20000 samples were used as the burnin
+60000 sampes were used to sample posterior   
+
+acceptnce ratio was 0.42 to 0.50 except for NNI topology, SubtreePruneRegraft topology,DirichletSimplex proposals
+
+#####################################################################################################################
+data <-readDiscreteCharacterData("/home/cw/Downloads/revbayes-master/projects/cmake/sos.nexus")
+n_species <- data.ntaxa()
+n_branches <- 2 * n_species - 3
+taxa <- data.taxa()
+
+
+
+mvi = 0 
+mni = 0
+pi_prior <- v(1,1,1,1) 
+pi ~ dnDirichlet(pi_prior)
+moves[++mvi] = mvBetaSimplex(pi, weight=2.0)
+moves[++mvi] = mvDirichletSimplex(pi, weight=1.0)
+
+er_prior <- v(1,1,1,1,1,1)
+er ~ dnDirichlet(er_prior)
+moves[++mvi] = mvBetaSimplex(er, weight=3.0)
+moves[++mvi] = mvDirichletSimplex(er, weight=1.5)
+
+
+# create a deterministic variable for the rate matrix, GTR
+Q := fnGTR(er,pi)
+
+# among site rate variation, +Gamma4
+alpha_prior_mean <- ln(2.0)
+alpha_prior_sd <- 0.587405
+alpha ~ dnLognormal( alpha_prior_mean, alpha_prior_sd )
+sr := fnDiscretizeGamma( alpha, alpha, 4, false )
+moves[++mvi] = mvScale(alpha, lambda=1.0, weight=2.0)
+
+
+
+
+
+out_group = clade("Aethionema_arabicum_SOS1B")
+# Prior distribution on the tree topology	
+topology ~ dnUniformTopology(taxa, outgroup=out_group)
+moves[++mvi] = mvNNI(topology, weight=5.0)
+moves[++mvi] = mvSPR(topology, weight=1.0)
+
+# Branch length prior
+for (i in 1:n_branches) {
+    bl[i] ~ dnExponential(10.0)
+	moves[++mvi] = mvScale(bl[i])
+}
+
+TL := sum(bl)
+psi := treeAssembly(topology, bl)
+
+# the sequence evolution model
+seq ~ dnPhyloCTMC(tree=psi, Q=Q, siteRates=sr, type="DNA")
+
+# attach the data
+seq.clamp(data)
+
+
+############
+# Analysis #
+############
+
+mymodel = model(psi)
+
+
+monitors[++mni] = mnModel(filename="outputm2/sos_var.log",printgen=10, separator = TAB)
+monitors[++mni] = mnFile(filename="outputm2/sos_var.trees",printgen=10, separator = TAB, psi)
+
+
+
+### Compute power posterior distributions
+pow_p = powerPosterior(mymodel, moves, monitors, "outputm2/sos_var.out", cats=127, sampleFreq=10) 
+pow_p.burnin(generations=10000,tuningInterval=25)
+pow_p.run(generations=1000)  
+
+### Use stepping-stone sampling to calculate marginal likelihoods
+ss = steppingStoneSampler(file="outputm2/sos_var.out", powerColumnName="power", likelihoodColumnName="likelihood")
+ss.marginal() 
+
+### Use path-sampling to calculate marginal likelihoods
+ps = pathSampler(file="outputm2/sos_var.out", powerColumnName="power", likelihoodColumnName="likelihood")
+ps.marginal() 
+
+# you may want to quit RevBayes now
+q()
+
+##############################################################################
+#ss.marginal=-11782.2
+#ps.marginal=-11782
+###############################################################################
+
+# using the model with highest marginal likelihood 
+data <-readDiscreteCharacterData("/home/cw/Downloads/revbayes-master/projects/cmake/sos.nexus")
+n_species <- data.ntaxa()
+n_branches <- 2 * n_species - 3
+taxa <- data.taxa()
+
+mvi = 0 
+mni = 0
+pi_prior <- v(1,1,1,1) 
+pi ~ dnDirichlet(pi_prior)
+moves[++mvi] = mvBetaSimplex(pi, weight=2.0)
+moves[++mvi] = mvDirichletSimplex(pi, weight=1.0)
+
+er_prior <- v(1,1,1,1,1,1)
+er ~ dnDirichlet(er_prior)
+moves[++mvi] = mvBetaSimplex(er, weight=3.0)
+moves[++mvi] = mvDirichletSimplex(er, weight=1.5)
+
+
+# create a deterministic variable for the rate matrix, GTR
+Q := fnGTR(er,pi)
+
+# among site rate variation, +Gamma4
+alpha_prior_mean <- ln(2.0)
+alpha_prior_sd <- 0.587405
+alpha ~ dnLognormal( alpha_prior_mean, alpha_prior_sd )
+sr := fnDiscretizeGamma( alpha, alpha, 4, false )
+moves[++mvi] = mvScale(alpha, lambda=1.0, weight=2.0)
+
+out_group = clade("Aethionema_arabicum_SOS1B")
+# Prior distribution on the tree topology	
+topology ~ dnUniformTopology(taxa, outgroup=out_group)
+moves[++mvi] = mvNNI(topology, weight=5.0)
+moves[++mvi] = mvSPR(topology, weight=1.0)
+
+# Branch length prior
+for (i in 1:n_branches) {
+    bl[i] ~ dnExponential(10.0)
+	moves[++mvi] = mvScale(bl[i])
+}
+
+TL := sum(bl)
+psi := treeAssembly(topology, bl)
+
+# the sequence evolution model
+seq ~ dnPhyloCTMC(tree=psi, Q=Q, siteRates=sr, type="DNA")
+
+# attach the data
+seq.clamp(data)
+
+mymodel = model(psi)
+
+
+#monitors[++mni] = mnScreen(alpha, p_inv, TL, printgen=1000)
+monitors[++mni] = mnFile(psi, filename="finalOUT/sos1.trees", printgen=10)
+monitors[++mni] = mnModel(filename="finalOUT/sos1.log",printgen=10)
+
+# run the analysis
+mymcmc = mcmc(mymodel, moves, monitors, nruns=4)
+mymcmc.burnin(20000,200)
+mymcmc.run(60000)
+
+
+# summarize output
+treetrace = readTreeTrace("finalOUT/sos1.trees")
+#treetrace.summarize()
+
+map_tree = mapTree(treetrace,"finalOUT/sos1.tre")
+
+mymcmc.operatorSummary()
